@@ -81,10 +81,111 @@ Medidas nesta versão, com os documentos de exemplo indexados:
 
 | Métrica | Valor |
 | --- | --- |
-| Testes do backend | **19/19** ✅ |
+| Testes do backend | **33/33** ✅ |
 | Hit@5 (fonte esperada recuperada) | **100%** |
 | Recusa correta em contexto insuficiente | **100%** |
-| Latência média por pergunta | **~3,6 s** |
+| Latência média por pergunta (chat) | **~3,6 s** |
+
+Resultados detalhados de recuperação (baseline vs reranking) estão na seção
+[Laboratório de Avaliação RAG](#laboratório-de-avaliação-rag).
+
+---
+
+## Laboratório de Avaliação RAG
+
+O FlowMind não é só um chatbot: é uma **bancada de avaliação e otimização de RAG**.
+Você define uma configuração (chunk size, overlap, top_k, limiar, reranking),
+executa um experimento reproduzível sobre um dataset e mede objetivamente **qual
+configuração recupera melhor** — sem números inventados, tudo calculado a partir do
+dataset esperado.
+
+### Por que avaliar RAG?
+
+"Parece que responde bem" não é medida. Sem métricas você não sabe se um chunk maior
+ajuda, se aumentar o `top_k` melhora a cobertura, ou se o reranking realmente reordena
+para melhor. A avaliação transforma intuição em número comparável e reproduzível.
+
+### Retrieval vs reranking
+
+A **recuperação vetorial** (pgvector) ordena os candidatos por similaridade de cosseno
+do embedding. O **reranking** re-pontua os `N` melhores candidatos com um sinal
+independente do embedding e devolve os `K` finais — útil quando a similaridade vetorial
+sozinha coloca o trecho certo em segundo lugar.
+
+```mermaid
+flowchart LR
+    Q[Query] --> VR[Vector Retrieval<br/>pgvector]
+    VR --> N[Top N candidatos]
+    N --> RR[Reranker]
+    RR --> K[Top K]
+    K --> LLM[LLM]
+```
+
+### Métricas (definições)
+
+Métricas de **recuperação** (nível de trecho, relevância pelo nome do documento):
+
+| Métrica | Definição |
+| --- | --- |
+| **Hit@K** | 1 se algum dos K trechos recuperados pertence a um documento esperado. |
+| **MRR** | Recíproco da posição do primeiro trecho relevante (0 se nenhum). Média = Mean Reciprocal Rank. |
+| **Precision@K** | Fração dos K trechos recuperados que pertencem a documentos esperados. |
+| **Recall@K** | Fração dos documentos esperados distintos que foram recuperados. |
+
+Métricas de **resposta / comportamento**: `answer_rate`, `correct_refusal_rate`
+(recusa correta em perguntas sem resposta na base), `expected_terms_match`
+(groundedness determinístico sobre a evidência recuperada) e latências
+(`latency_retrieval_ms`, `latency_llm_ms`). Groundedness por LLM-as-a-judge fica como
+extensão opcional, separada das métricas determinísticas.
+
+### Baseline vs experimento — resultados reais
+
+Dois experimentos sobre o mesmo perfil de índice (`nomic-embed-text`, chunk 700/100,
+top_k 5), no dataset sintético de 8 casos (6 positivos + 2 negativos):
+
+| Métrica | A · baseline (sem reranking) | B · com reranking (lexical) |
+| --- | --- | --- |
+| Hit@5 | **100%** | **100%** |
+| MRR | **1,00** | **1,00** |
+| Precision@5 | 0,29 | 0,29 |
+| Recall@5 | **100%** | **100%** |
+| Recusa correta | **100%** | **100%** |
+| Latência de retrieval | ~211 ms | ~216 ms |
+
+**Leitura honesta:** neste corpus pequeno e limpo o baseline já **satura** as métricas
+de recuperação (MRR 1,00 — o primeiro trecho recuperado já é sempre do documento certo),
+então o reranking **não traz ganho mensurável** e adiciona uma latência pequena. O
+reranking ainda assim **reordena** os candidatos — visível no Explorador RAG — e é em
+corpora maiores e mais ruidosos que ele tende a ajudar. O laboratório existe justamente
+para medir isso em vez de assumir.
+
+![Laboratório de Avaliação RAG](docs/screenshots/laboratorio-rag.png)
+
+### Explorador RAG com reranking
+
+Com o reranking ligado, o Explorador mostra lado a lado a ordem **original** (por
+similaridade) e a ordem **após reranking** (com o score `rr` do reranker), tornando o
+reordenamento explícito:
+
+![Explorador RAG com reranking](docs/screenshots/explorador-reranking.png)
+
+### Reprodutibilidade
+
+Cada experimento persiste no PostgreSQL a configuração completa, o perfil de índice, o
+dataset, o SHA do commit, a data/hora, a duração e as métricas — para que qualquer
+resultado possa ser reproduzido.
+
+### API de avaliação
+
+| Método | Endpoint | Descrição |
+| --- | --- | --- |
+| `GET`  | `/api/evaluation/experiments`        | Lista experimentos |
+| `POST` | `/api/evaluation/run`                | Executa um experimento e persiste as métricas |
+| `GET`  | `/api/evaluation/experiments/{id}`   | Detalhe de um experimento (config + por pergunta) |
+| `POST` | `/api/evaluation/compare`            | Compara 2+ experimentos com deltas |
+
+Também há o harness de linha de comando em `evaluation/evaluate.py` (ver
+[Avaliação](#avaliação)).
 
 ---
 
@@ -95,7 +196,13 @@ Medidas nesta versão, com os documentos de exemplo indexados:
 - **Chat RAG fundamentado** — respostas restritas ao contexto recuperado, com citações
   de fonte expansíveis (documento · seção · página · score).
 - **Explorador RAG** — inspeciona a recuperação pura (top-k trechos e scores) sem
-  geração do LLM.
+  geração do LLM, e mostra o reordenamento quando o reranking está ligado.
+- **Laboratório de Avaliação RAG** — executa experimentos reproduzíveis, mede Hit@K,
+  MRR, Precision@K, Recall@K e latência, e compara configurações lado a lado.
+- **Reranking** — reordenação dos candidatos por um reranker local (BM25 lexical),
+  atrás de uma abstração `RerankerProvider`, com feature flag desligada por padrão.
+- **Perfis de índice** — cada chunk é marcado com o perfil (modelo + chunk size/overlap)
+  para nunca misturar embeddings incompatíveis na mesma recuperação.
 - **Não alucina** — quando nenhum trecho passa do limiar, o LLM nunca é solicitado a
   inventar; a aplicação retorna "informação insuficiente".
 - **Deduplicação** — uploads idênticos são detectados por hash de conteúdo e ignorados.
@@ -134,15 +241,16 @@ Ollama. O backend de embeddings é intercambiável atrás de `EmbeddingProvider`
 flowmind-ai/
 ├── backend/            App FastAPI
 │   └── app/
-│       ├── api/          rotas HTTP (documents, search, chat, stats)
+│       ├── api/          rotas HTTP (documents, search, chat, stats, evaluation)
 │       ├── core/         config, database, logging
 │       ├── ingestion/    extração (PDF/DOCX/MD/TXT) + chunking
 │       ├── embeddings/   EmbeddingProvider + implementação Ollama
 │       ├── llm/          LLMProvider + implementação Ollama
-│       ├── rag/          pipeline de retrieval + chat fundamentado
+│       ├── rag/          pipeline de retrieval + chat + rag/reranker/ (RerankerProvider)
+│       ├── evaluation/   métricas, perfis de índice e runner de experimentos (V2)
 │       ├── models/       modelos ORM + schemas Pydantic
 │       └── services/     ingestão/gestão de documentos
-├── frontend/           SPA Vue 3 + TS (Painel, Documentos, Assistente, Explorador RAG, Configurações)
+├── frontend/           SPA Vue 3 + TS (Painel, Documentos, Assistente, Explorador RAG, Laboratório RAG, Configurações)
 ├── sample_documents/   documentos sintéticos para testar perguntas cruzadas
 ├── evaluation/         dataset.json + evaluate.py
 ├── n8n/                automação V2 (placeholder)
@@ -263,6 +371,10 @@ Todas as configurações vêm de variáveis de ambiente (veja `.env.example`):
 | `EMBEDDING_DIM`        | `768`              | Dimensão do vetor de embedding                |
 | `RETRIEVAL_TOP_K`      | `5`                | Trechos recuperados por padrão                |
 | `SIMILARITY_THRESHOLD` | `0.55`             | Similaridade mínima para confiar num trecho   |
+| `RERANKER_ENABLED`     | `false`            | Liga o reranking no pipeline (flag global)    |
+| `RERANKER_MODEL`       | `lexical`          | Reranker (BM25 lexical local)                 |
+| `RERANKER_CANDIDATES`  | `15`               | Candidatos N recuperados antes do reranking   |
+| `RERANKER_TOP_K`       | `5`                | K final após reranking                        |
 | `MAX_UPLOAD_MB`        | `25`               | Tamanho máximo de upload                      |
 | `ALLOWED_EXTENSIONS`   | `pdf,docx,md,txt`  | Whitelist de upload                           |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `900` / `150` | Janela / sobreposição do chunking (palavras) |
@@ -328,14 +440,15 @@ npm run build
 
 ## Roadmap
 
-| Versão  | Foco                                              |
-| ------- | ------------------------------------------------- |
-| **V1**  | RAG + Ollama + pgvector _(esta versão)_           |
-| V2      | Automação de documentos com n8n                   |
-| V3      | Melhorias de avaliação de RAG / reranking         |
-| V4      | Servidor de inferência vLLM                       |
-| V5      | Curadoria de dataset + fine-tuning                |
-| V6      | Agents / tools                                    |
+| Versão  | Foco                                              | Status |
+| ------- | ------------------------------------------------- | ------ |
+| **V1**  | RAG + Ollama + pgvector                           | ✅ entregue |
+| **Lab** | Laboratório de Avaliação RAG + reranking          | ✅ entregue |
+| V2      | Automação de documentos com n8n                   | próximo pilar |
+| V3      | Melhorias de avaliação / reranking (cross-encoder)| planejado |
+| V4      | Servidor de inferência vLLM                       | planejado |
+| V5      | Curadoria de dataset + fine-tuning                | planejado |
+| V6      | Agents / tools                                    | planejado |
 
 ---
 
