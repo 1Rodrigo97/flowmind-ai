@@ -1,0 +1,47 @@
+# Environment / secrets
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Uploaded documents (real user data)
+uploads/
+backend/uploads/
+
+# Database dumps / data
+*.sql
+*.dump
+pgdata/
+
+# Model files / caches
+*.gguf
+*.bin
+*.safetensors
+.cache/
+# Downloaded model files at the repo root (not the backend app/models package).
+/models/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# Evaluation output
+evaluation/results/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
