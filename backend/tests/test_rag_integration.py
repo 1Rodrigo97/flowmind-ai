@@ -54,7 +54,7 @@ def test_semantic_search_returns_relevant_document(db):
     """T7: retrieval ranks the relevant document first."""
     svc.ingest_document(db, "rag.md", RAG_DOC)
     svc.ingest_document(db, "fine_tuning.md", FT_DOC)
-    results = search(db, "What is retrieval augmented generation?", top_k=3)
+    results = search(db, "What is retrieval augmented generation?", top_k=3)["results"]
     assert results
     assert results[0]["document"] == "rag.md"
     assert results[0]["score"] > 0
