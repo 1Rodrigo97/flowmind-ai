@@ -4,6 +4,7 @@ const nav = [
   { to: '/documents', label: 'Documentos', icon: '▤' },
   { to: '/assistant', label: 'Assistente', icon: '◈' },
   { to: '/explorer', label: 'Explorador RAG', icon: '◎' },
+  { to: '/lab', label: 'Laboratório RAG', icon: '◰' },
   { to: '/settings', label: 'Configurações', icon: '⚙' },
 ]
 </script>
