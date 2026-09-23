@@ -17,42 +17,42 @@ onMounted(async () => {
 })
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleString()
+  return new Date(iso).toLocaleString('pt-BR')
 }
 </script>
 
 <template>
-  <h1 class="page-title">Dashboard</h1>
-  <p class="page-sub">Overview of your indexed knowledge base.</p>
+  <h1 class="page-title">Painel</h1>
+  <p class="page-sub">Visão geral da sua base de conhecimento indexada.</p>
 
-  <p v-if="loading"><span class="spinner" /> Loading…</p>
-  <div v-else-if="error" class="error">Could not reach the API: {{ error }}</div>
+  <p v-if="loading"><span class="spinner" /> Carregando…</p>
+  <div v-else-if="error" class="error">Não foi possível acessar a API: {{ error }}</div>
 
   <template v-else-if="stats">
     <div class="grid grid-4">
       <div class="card">
         <div class="stat">{{ stats.documents }}</div>
-        <div class="stat-label">Documents</div>
+        <div class="stat-label">Documentos</div>
       </div>
       <div class="card">
         <div class="stat">{{ stats.chunks }}</div>
-        <div class="stat-label">Chunks</div>
+        <div class="stat-label">Trechos</div>
       </div>
       <div class="card">
         <div class="stat">{{ Object.keys(stats.file_types).length }}</div>
-        <div class="stat-label">File types</div>
+        <div class="stat-label">Tipos de arquivo</div>
       </div>
       <div class="card">
         <div class="stat">
           {{ stats.documents ? Math.round(stats.chunks / stats.documents) : 0 }}
         </div>
-        <div class="stat-label">Avg chunks / doc</div>
+        <div class="stat-label">Média de trechos / doc</div>
       </div>
     </div>
 
     <div class="grid" style="grid-template-columns: 1fr 2fr; margin-top: 16px">
       <div class="card">
-        <h3 style="margin-top: 0">File types</h3>
+        <h3 style="margin-top: 0">Tipos de arquivo</h3>
         <table>
           <tbody>
             <tr v-for="(count, type) in stats.file_types" :key="type">
@@ -60,17 +60,17 @@ function fmtDate(iso: string): string {
               <td style="text-align: right">{{ count }}</td>
             </tr>
             <tr v-if="!Object.keys(stats.file_types).length">
-              <td class="muted">No documents yet.</td>
+              <td class="muted">Nenhum documento ainda.</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <div class="card">
-        <h3 style="margin-top: 0">Recent documents</h3>
+        <h3 style="margin-top: 0">Documentos recentes</h3>
         <table>
           <thead>
-            <tr><th>Name</th><th>Type</th><th>Chunks</th><th>Added</th></tr>
+            <tr><th>Nome</th><th>Tipo</th><th>Trechos</th><th>Adicionado</th></tr>
           </thead>
           <tbody>
             <tr v-for="d in stats.recent" :key="d.id">
@@ -80,7 +80,7 @@ function fmtDate(iso: string): string {
               <td class="muted">{{ fmtDate(d.created_at) }}</td>
             </tr>
             <tr v-if="!stats.recent.length">
-              <td colspan="4" class="muted">Upload a document to get started.</td>
+              <td colspan="4" class="muted">Envie um documento para começar.</td>
             </tr>
           </tbody>
         </table>

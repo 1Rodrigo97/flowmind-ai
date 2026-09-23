@@ -29,24 +29,24 @@ async function run() {
 </script>
 
 <template>
-  <h1 class="page-title">RAG Explorer</h1>
-  <p class="page-sub">Inspect pure retrieval — the chunks and similarity scores, no LLM.</p>
+  <h1 class="page-title">Explorador RAG</h1>
+  <p class="page-sub">Inspecione a recuperação pura — os trechos e scores de similaridade, sem LLM.</p>
 
   <div class="flow">
-    <span class="step">Query</span>→
+    <span class="step">Consulta</span>→
     <span class="step">Embedding</span>→
-    <span class="step">pgvector search</span>→
-    <span class="step">Top-k chunks</span>→
-    <span class="step">Similarity score</span>
+    <span class="step">Busca pgvector</span>→
+    <span class="step">Top-k trechos</span>→
+    <span class="step">Score de similaridade</span>
   </div>
 
   <div style="display: flex; gap: 10px; align-items: flex-end">
     <div style="flex: 1">
-      <label>Query</label>
+      <label>Consulta</label>
       <input
         v-model="query"
         type="text"
-        placeholder="e.g. how are embeddings compared?"
+        placeholder="ex.: como os embeddings são comparados?"
         @keydown.enter="run"
       />
     </div>
@@ -54,18 +54,18 @@ async function run() {
       <label>top_k</label>
       <input v-model.number="topK" type="number" min="1" max="20" />
     </div>
-    <button class="btn" :disabled="loading" @click="run">Retrieve</button>
+    <button class="btn" :disabled="loading" @click="run">Buscar</button>
   </div>
 
   <div v-if="error" class="error" style="margin-top: 14px">{{ error }}</div>
 
-  <div v-if="loading" style="margin-top: 20px"><span class="spinner" /> Retrieving…</div>
+  <div v-if="loading" style="margin-top: 20px"><span class="spinner" /> Buscando…</div>
 
   <template v-else-if="results">
     <p class="muted" style="margin-top: 20px">
-      {{ results.length }} chunk(s) for “{{ lastQuery }}”, ranked by cosine similarity:
+      {{ results.length }} trecho(s) para “{{ lastQuery }}”, ordenados por similaridade de cosseno:
     </p>
     <SourceCard v-for="(s, i) in results" :key="i" :source="s" :show-bar="true" />
-    <p v-if="!results.length" class="muted">No chunks found. Index some documents first.</p>
+    <p v-if="!results.length" class="muted">Nenhum trecho encontrado. Indexe alguns documentos primeiro.</p>
   </template>
 </template>

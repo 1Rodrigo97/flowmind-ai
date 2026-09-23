@@ -28,8 +28,8 @@ async function handleFiles(files: FileList | null) {
     for (const file of Array.from(files)) {
       const res = await api.uploadDocument(file)
       notice.value = res.duplicate
-        ? `"${res.filename}" is already indexed (skipped).`
-        : `Indexed "${res.filename}" into ${res.chunks} chunks.`
+        ? `"${res.filename}" já está indexado (ignorado).`
+        : `"${res.filename}" indexado em ${res.chunks} trechos.`
     }
     await load()
   } catch (e) {
@@ -59,11 +59,20 @@ function fmtSize(bytes: number): string {
     ? `${(bytes / 1024).toFixed(0)} KB`
     : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
+
+const STATUS_PT: Record<string, string> = {
+  indexed: 'indexado',
+  duplicate: 'duplicado',
+  processing: 'processando',
+}
+function statusPt(s: string): string {
+  return STATUS_PT[s] ?? s
+}
 </script>
 
 <template>
-  <h1 class="page-title">Documents</h1>
-  <p class="page-sub">Upload files to index them into the knowledge base.</p>
+  <h1 class="page-title">Documentos</h1>
+  <p class="page-sub">Envie arquivos para indexá-los na base de conhecimento.</p>
 
   <div
     class="dropzone"
@@ -81,12 +90,12 @@ function fmtSize(bytes: number): string {
       hidden
       @change="handleFiles(($event.target as HTMLInputElement).files)"
     />
-    <p v-if="uploading"><span class="spinner" /> Indexing…</p>
+    <p v-if="uploading"><span class="spinner" /> Indexando…</p>
     <template v-else>
       <p style="margin: 0; font-weight: 600; color: var(--text)">
-        Drag &amp; drop files here, or click to browse
+        Arraste e solte os arquivos aqui, ou clique para selecionar
       </p>
-      <p style="margin: 6px 0 0">Supported: PDF, DOCX, MD, TXT</p>
+      <p style="margin: 6px 0 0">Suportados: PDF, DOCX, MD, TXT</p>
     </template>
   </div>
 
@@ -96,7 +105,7 @@ function fmtSize(bytes: number): string {
   <div class="card" style="margin-top: 20px; padding: 0">
     <table>
       <thead>
-        <tr><th>Name</th><th>Type</th><th>Size</th><th>Chunks</th><th>Status</th><th></th></tr>
+        <tr><th>Nome</th><th>Tipo</th><th>Tamanho</th><th>Trechos</th><th>Status</th><th></th></tr>
       </thead>
       <tbody>
         <tr v-for="d in docs" :key="d.id">
@@ -104,13 +113,13 @@ function fmtSize(bytes: number): string {
           <td><span class="badge">{{ d.file_type }}</span></td>
           <td class="muted">{{ fmtSize(d.size_bytes) }}</td>
           <td>{{ d.chunk_count }}</td>
-          <td><span class="badge ok">{{ d.status }}</span></td>
+          <td><span class="badge ok">{{ statusPt(d.status) }}</span></td>
           <td style="text-align: right">
-            <button class="btn-danger" @click="remove(d.id)">Delete</button>
+            <button class="btn-danger" @click="remove(d.id)">Excluir</button>
           </td>
         </tr>
         <tr v-if="!docs.length">
-          <td colspan="6" class="muted" style="padding: 20px">No documents indexed yet.</td>
+          <td colspan="6" class="muted" style="padding: 20px">Nenhum documento indexado ainda.</td>
         </tr>
       </tbody>
     </table>

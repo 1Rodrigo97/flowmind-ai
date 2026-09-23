@@ -48,26 +48,26 @@ async function scroll() {
 </script>
 
 <template>
-  <h1 class="page-title">Assistant</h1>
-  <p class="page-sub">Ask questions grounded in your indexed documents.</p>
+  <h1 class="page-title">Assistente</h1>
+  <p class="page-sub">Faça perguntas fundamentadas nos seus documentos indexados.</p>
 
   <div ref="thread" class="card" style="min-height: 340px; max-height: 58vh; overflow-y: auto">
     <p v-if="!messages.length" class="muted">
-      Ask something like “What is the difference between RAG and fine-tuning?”
+      Pergunte algo como “Qual é a diferença entre RAG e fine-tuning?”
     </p>
 
     <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
       <div class="bubble">{{ m.text }}</div>
       <template v-if="m.role === 'ai' && m.status === 'answered' && m.sources?.length">
-        <div class="sources-title">Sources used</div>
+        <div class="sources-title">Fontes utilizadas</div>
         <SourceCard v-for="(s, j) in m.sources" :key="j" :source="s" />
       </template>
       <div v-else-if="m.role === 'ai' && m.status === 'insufficient_context'" class="sources-title">
-        No grounded source cleared the confidence threshold.
+        Nenhuma fonte atingiu o limiar mínimo de confiança.
       </div>
     </div>
 
-    <p v-if="loading" class="muted"><span class="spinner" /> Thinking…</p>
+    <p v-if="loading" class="muted"><span class="spinner" /> Pensando…</p>
   </div>
 
   <div v-if="error" class="error" style="margin-top: 12px">{{ error }}</div>
@@ -77,7 +77,7 @@ async function scroll() {
       <textarea
         v-model="question"
         rows="2"
-        placeholder="Type your question and press Enter…"
+        placeholder="Digite sua pergunta e pressione Enter…"
         @keydown.enter.exact.prevent="ask"
       />
     </div>
@@ -85,6 +85,6 @@ async function scroll() {
       <label>top_k</label>
       <input v-model.number="topK" type="number" min="1" max="20" />
     </div>
-    <button class="btn" :disabled="loading" @click="ask">Ask</button>
+    <button class="btn" :disabled="loading" @click="ask">Perguntar</button>
   </div>
 </template>
