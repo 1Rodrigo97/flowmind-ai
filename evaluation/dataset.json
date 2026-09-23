@@ -1,0 +1,33 @@
+[
+  {
+    "question": "What is Retrieval-Augmented Generation?",
+    "expected_document": "rag_overview.md",
+    "expected_terms": ["retrieval", "context"]
+  },
+  {
+    "question": "How does RAG differ from fine-tuning?",
+    "expected_document": "rag_overview.md",
+    "expected_terms": ["weights", "retrieval"]
+  },
+  {
+    "question": "When should I use fine-tuning instead of retrieval?",
+    "expected_document": "fine_tuning_notes.md",
+    "expected_terms": ["style", "weights"]
+  },
+  {
+    "question": "What is an embedding and how is similarity measured?",
+    "expected_document": "embeddings_basics.md",
+    "expected_terms": ["vector", "cosine"]
+  },
+  {
+    "question": "Why are small language models a good fit for local RAG?",
+    "expected_document": "llm_vs_slm.md",
+    "expected_terms": ["local", "context"]
+  },
+  {
+    "question": "What is the capital of Australia and its population?",
+    "expected_document": null,
+    "expected_terms": [],
+    "expect_insufficient": true
+  }
+]
