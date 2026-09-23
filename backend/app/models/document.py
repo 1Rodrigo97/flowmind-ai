@@ -25,6 +25,9 @@ class Document(Base):
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(32), default="indexed")
+    # Normalized extracted text, kept so the document can be re-chunked / re-embedded
+    # under a different index profile without the original file (V2 reindexing).
+    raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     chunks: Mapped[list["Chunk"]] = relationship(
@@ -36,11 +39,20 @@ class Document(Base):
 
 class Chunk(Base):
     __tablename__ = "chunks"
-    __table_args__ = (UniqueConstraint("document_id", "chunk_index", name="uq_doc_chunk"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "document_id", "index_profile", "chunk_index", name="uq_doc_profile_chunk"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     document_id: Mapped[int] = mapped_column(
         ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # Which index profile (embedding model + chunk size/overlap) produced this chunk.
+    # Retrieval filters on this so incompatible embeddings are never mixed.
+    index_profile: Mapped[str] = mapped_column(
+        String(128), nullable=False, index=True, default=settings.default_index_profile
     )
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
     section: Mapped[str | None] = mapped_column(String(512), nullable=True)

@@ -63,6 +63,7 @@ def ingest_document(db: Session, filename: str, data: bytes) -> tuple[Document, 
 
     # extract -> chunk
     segments = extract(ext, data)
+    raw_text = "\n\n".join(s.text for s in segments)
     chunks = chunk_segments(
         segments, chunk_size=settings.chunk_size, overlap=settings.chunk_overlap
     )
@@ -73,6 +74,8 @@ def ingest_document(db: Session, filename: str, data: bytes) -> tuple[Document, 
     embedder = get_embedding_provider()
     vectors = embedder.embed_batch([c.content for c in chunks])
 
+    profile = settings.default_index_profile
+
     # persist
     document = Document(
         filename=filename,
@@ -81,6 +84,7 @@ def ingest_document(db: Session, filename: str, data: bytes) -> tuple[Document, 
         size_bytes=len(data),
         chunk_count=len(chunks),
         status="indexed",
+        raw_text=raw_text,
     )
     db.add(document)
     db.flush()  # assigns document.id
@@ -89,6 +93,7 @@ def ingest_document(db: Session, filename: str, data: bytes) -> tuple[Document, 
         db.add(
             Chunk(
                 document_id=document.id,
+                index_profile=profile,
                 chunk_index=c.index,
                 section=c.section,
                 page=c.page,
