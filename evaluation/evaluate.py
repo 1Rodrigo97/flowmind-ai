@@ -47,7 +47,12 @@ def run(api: str, top_k: int) -> int:
 
     for i, item in enumerate(dataset, start=1):
         question = item["question"]
-        expect_insufficient = item.get("expect_insufficient", False)
+        # New V2 dataset schema (with backward-compatible fallbacks).
+        expect_insufficient = not item.get("should_answer", not item.get("expect_insufficient", False))
+        expected_documents = item.get("expected_documents")
+        if expected_documents is None:
+            single = item.get("expected_document")
+            expected_documents = [single] if single else []
 
         start = time.perf_counter()
         try:
@@ -77,7 +82,7 @@ def run(api: str, top_k: int) -> int:
 
         # Hit@K
         hit_total += 1
-        doc_hit = item.get("expected_document") in source_docs
+        doc_hit = any(d in source_docs for d in expected_documents)
         hits += int(doc_hit)
 
         # Term coverage

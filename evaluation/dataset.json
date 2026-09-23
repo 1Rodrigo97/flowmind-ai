@@ -1,33 +1,66 @@
 [
   {
+    "id": "rag-001",
     "question": "What is Retrieval-Augmented Generation?",
-    "expected_document": "rag_overview.md",
-    "expected_terms": ["retrieval", "context"]
+    "expected_documents": ["rag_overview.md"],
+    "expected_sections": ["What is RAG"],
+    "expected_terms": ["retrieval", "context"],
+    "should_answer": true
   },
   {
+    "id": "rag-002",
     "question": "How does RAG differ from fine-tuning?",
-    "expected_document": "rag_overview.md",
-    "expected_terms": ["weights", "retrieval"]
+    "expected_documents": ["rag_overview.md", "fine_tuning_notes.md"],
+    "expected_sections": ["RAG vs fine-tuning", "Fine-tuning versus retrieval"],
+    "expected_terms": ["weights", "retrieval"],
+    "should_answer": true
   },
   {
+    "id": "ft-001",
     "question": "When should I use fine-tuning instead of retrieval?",
-    "expected_document": "fine_tuning_notes.md",
-    "expected_terms": ["style", "weights"]
+    "expected_documents": ["fine_tuning_notes.md"],
+    "expected_sections": ["When to fine-tune"],
+    "expected_terms": ["style", "weights"],
+    "should_answer": true
   },
   {
+    "id": "ft-002",
+    "question": "What are parameter-efficient fine-tuning methods like LoRA?",
+    "expected_documents": ["fine_tuning_notes.md"],
+    "expected_sections": ["Parameter-efficient methods"],
+    "expected_terms": ["LoRA", "parameters"],
+    "should_answer": true
+  },
+  {
+    "id": "emb-001",
     "question": "What is an embedding and how is similarity measured?",
-    "expected_document": "embeddings_basics.md",
-    "expected_terms": ["vector", "cosine"]
+    "expected_documents": ["embeddings_basics.md"],
+    "expected_sections": ["What an embedding is", "Similarity measures"],
+    "expected_terms": ["vector", "cosine"],
+    "should_answer": true
   },
   {
+    "id": "slm-001",
     "question": "Why are small language models a good fit for local RAG?",
-    "expected_document": "llm_vs_slm.md",
-    "expected_terms": ["local", "context"]
+    "expected_documents": ["llm_vs_slm.md"],
+    "expected_sections": ["Why SLMs suit local RAG"],
+    "expected_terms": ["local", "context"],
+    "should_answer": true
   },
   {
+    "id": "neg-001",
     "question": "What is the capital of Australia and its population?",
-    "expected_document": null,
+    "expected_documents": [],
+    "expected_sections": [],
     "expected_terms": [],
-    "expect_insufficient": true
+    "should_answer": false
+  },
+  {
+    "id": "neg-002",
+    "question": "What time does the pharmacy in Lisbon close on Sundays?",
+    "expected_documents": [],
+    "expected_sections": [],
+    "expected_terms": [],
+    "should_answer": false
   }
 ]
