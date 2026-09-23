@@ -1,134 +1,187 @@
 # FlowMind AI
 
-**Personal Knowledge & Automation Assistant** powered by Retrieval-Augmented
-Generation and local language models.
+**Assistente Pessoal de Conhecimento & Automação** com Geração Aumentada por
+Recuperação (RAG) e modelos de linguagem locais.
 
-FlowMind AI lets you upload your own documents, index them automatically, and ask
-questions that are answered **only** from your material — with every answer showing
-exactly which sources and passages were used. If the knowledge base doesn't contain
-the answer, FlowMind says so instead of inventing one.
+O FlowMind AI permite enviar seus próprios documentos, indexá-los automaticamente e
+fazer perguntas respondidas **somente** a partir do seu material — mostrando
+exatamente **quais fontes e trechos** foram usados em cada resposta. Se a base de
+conhecimento não contém a resposta, o FlowMind declara isso em vez de inventar.
 
-Everything runs locally: a local LLM via **Ollama**, local embeddings, and
-**PostgreSQL + pgvector** for retrieval. No data leaves your machine.
+Tudo roda localmente: um LLM local via **Ollama**, embeddings locais e
+**PostgreSQL + pgvector** para a busca vetorial. Nenhum dado sai da sua máquina.
 
-> _Screenshot placeholder — add `docs/dashboard.png`, `docs/rag-explorer.png`,
-> `docs/assistant.png`._
-
----
-
-## Features
-
-- **Document ingestion** — drag & drop PDF, DOCX, MD and TXT; automatic
-  extraction, chunking, embedding and indexing.
-- **Grounded RAG chat** — answers constrained to retrieved context, with inline,
-  expandable source citations (document · section · page · score).
-- **RAG Explorer** — inspect pure retrieval (top-k chunks and similarity scores)
-  with no LLM generation, to see _how_ retrieval works.
-- **Refuses to hallucinate** — when no chunk clears the similarity threshold, the
-  LLM is never asked to fabricate; the app returns "not enough information".
-- **Deduplication** — identical uploads are detected by content hash and skipped.
-- **Pluggable providers** — LLM and embeddings sit behind interfaces, so vLLM or
-  OpenAI-compatible backends can be added without touching the RAG code.
-- **Evaluation harness** — Hit@K, expected-term coverage, refusal accuracy and
-  latency over a small dataset.
-- **Observability** — one structured JSON log line per request with retrieval and
-  LLM timings, chunk counts and the model used.
+![Painel do FlowMind AI](docs/screenshots/painel.png)
 
 ---
 
-## Technology stack
+## Por que este projeto existe?
 
-| Layer        | Technology                          |
-| ------------ | ----------------------------------- |
-| Backend      | Python 3.11, FastAPI, SQLAlchemy 2  |
-| Vector store | PostgreSQL 16 + pgvector            |
-| LLM          | Ollama (`llama3.2:3b` by default)   |
-| Embeddings   | Ollama (`nomic-embed-text`, 768-d)  |
-| Frontend     | Vue 3, TypeScript, Vite, Vue Router |
-| Containers   | Docker Compose                      |
+Este é um projeto pessoal de **Engenharia de IA**, criado para demonstrar, ponta a
+ponta, os fundamentos de um sistema de RAG de produção:
 
-### Why these embeddings?
+- **RAG** (Retrieval-Augmented Generation) fundamentado em fontes;
+- **Embeddings** e representação semântica de texto;
+- **Busca vetorial** com pgvector (similaridade de cosseno);
+- **Grounding** — o modelo responde apenas pelo contexto recuperado e recusa quando
+  não há evidência suficiente, em vez de alucinar;
+- **Avaliação** objetiva de recuperação e comportamento (Hit@K, recusas, latência);
+- **LLM local** rodando offline via Ollama;
+- **Arquitetura desacoplada** — LLM e embeddings atrás de interfaces, permitindo
+  trocar de provedor (vLLM, OpenAI-compatible) sem reescrever o RAG.
 
-V1 uses **`nomic-embed-text` served by Ollama**. This keeps a single local
-runtime (no PyTorch/`sentence-transformers` dependency), produces stable 768-dim
-vectors, runs fully offline and free, and pairs naturally with the Ollama LLM.
-The embedding backend is swappable behind `EmbeddingProvider`.
+O objetivo é mostrar não só "um chatbot", mas o entendimento de **como a recuperação
+funciona** — por isso existe a tela **Explorador RAG**, que expõe os trechos e scores
+sem passar pelo LLM.
 
 ---
 
-## Architecture
+## Demonstração
+
+Fluxo completo: envie documentos, veja-os indexados, explore a recuperação e
+converse com a sua base recebendo as fontes exatas.
+
+| Painel | Documentos |
+| :---: | :---: |
+| <img src="docs/screenshots/painel.png" width="420" alt="Painel" /> | <img src="docs/screenshots/documentos.png" width="420" alt="Documentos" /> |
+| **Assistente (resposta + fontes)** | **Explorador RAG (trechos + scores)** |
+| <img src="docs/screenshots/assistente.png" width="420" alt="Assistente" /> | <img src="docs/screenshots/explorador-rag.png" width="420" alt="Explorador RAG" /> |
+
+- **Painel** — quantidade de documentos, trechos, tipos de arquivo e documentos recentes.
+- **Documentos** — upload por arrastar & soltar, lista, status e exclusão.
+- **Assistente** — resposta fundamentada com cartões de fonte expansíveis
+  (documento · seção · página · score).
+- **Explorador RAG** — recuperação pura: os trechos mais próximos e seus scores de
+  similaridade, **sem geração do LLM**.
+
+---
+
+## Como o RAG funciona aqui
+
+```
+documentos → chunks → embeddings → pgvector → retrieval → LLM → resposta com fontes
+```
+
+Cada trecho armazenado guarda os metadados necessários para a citação: `document_id`,
+`filename`, `file_type`, `chunk_index`, `section`, `page`, `content`, `embedding` e
+`created_at`.
+
+**Grounding.** O prompt de sistema instrui o modelo a responder apenas com o contexto
+recuperado e a devolver `INSUFFICIENT_CONTEXT` quando não conseguir. Antes mesmo de
+chamar o LLM, os trechos recuperados são filtrados por um limiar de similaridade
+configurável (`SIMILARITY_THRESHOLD`); se nenhum passar, a aplicação encurta o fluxo e
+retorna a resposta de "informação insuficiente" sem pedir ao modelo para preencher a
+lacuna.
+
+---
+
+## Métricas atuais
+
+Medidas nesta versão, com os documentos de exemplo indexados:
+
+| Métrica | Valor |
+| --- | --- |
+| Testes do backend | **19/19** ✅ |
+| Hit@5 (fonte esperada recuperada) | **100%** |
+| Recusa correta em contexto insuficiente | **100%** |
+| Latência média por pergunta | **~3,6 s** |
+
+---
+
+## Funcionalidades
+
+- **Ingestão de documentos** — arrastar & soltar PDF, DOCX, MD e TXT; extração,
+  chunking, embedding e indexação automáticos.
+- **Chat RAG fundamentado** — respostas restritas ao contexto recuperado, com citações
+  de fonte expansíveis (documento · seção · página · score).
+- **Explorador RAG** — inspeciona a recuperação pura (top-k trechos e scores) sem
+  geração do LLM.
+- **Não alucina** — quando nenhum trecho passa do limiar, o LLM nunca é solicitado a
+  inventar; a aplicação retorna "informação insuficiente".
+- **Deduplicação** — uploads idênticos são detectados por hash de conteúdo e ignorados.
+- **Provedores plugáveis** — LLM e embeddings atrás de interfaces, permitindo adicionar
+  vLLM ou backends OpenAI-compatible sem tocar no código de RAG.
+- **Harness de avaliação** — Hit@K, cobertura de termos esperados, precisão de recusa e
+  latência sobre um dataset pequeno.
+- **Observabilidade** — uma linha de log JSON por request com tempos de retrieval e LLM,
+  contagem de trechos e o modelo usado.
+
+---
+
+## Stack tecnológica
+
+| Camada        | Tecnologia                          |
+| ------------- | ----------------------------------- |
+| Backend       | Python 3.11, FastAPI, SQLAlchemy 2  |
+| Banco vetorial| PostgreSQL 16 + pgvector            |
+| LLM           | Ollama (`llama3.2:3b` por padrão)   |
+| Embeddings    | Ollama (`nomic-embed-text`, 768-d)  |
+| Frontend      | Vue 3, TypeScript, Vite, Vue Router |
+| Contêineres   | Docker Compose                      |
+
+### Por que estes embeddings?
+
+A V1 usa **`nomic-embed-text` servido pelo Ollama**. Isso mantém um único runtime local
+(sem dependência de PyTorch/`sentence-transformers`), produz vetores estáveis de 768
+dimensões, roda totalmente offline e gratuito, e combina naturalmente com o LLM do
+Ollama. O backend de embeddings é intercambiável atrás de `EmbeddingProvider`.
+
+---
+
+## Arquitetura
 
 ```
 flowmind-ai/
-├── backend/            FastAPI app
+├── backend/            App FastAPI
 │   └── app/
-│       ├── api/          HTTP routers (documents, search, chat, stats)
+│       ├── api/          rotas HTTP (documents, search, chat, stats)
 │       ├── core/         config, database, logging
-│       ├── ingestion/    extraction (PDF/DOCX/MD/TXT) + chunking
-│       ├── embeddings/   EmbeddingProvider + Ollama implementation
-│       ├── llm/          LLMProvider + Ollama implementation
-│       ├── rag/          retrieval + grounded chat pipeline
-│       ├── models/       ORM models + Pydantic schemas
-│       └── services/     document ingestion/management
-├── frontend/           Vue 3 + TS SPA (Dashboard, Documents, Assistant, RAG Explorer, Settings)
-├── sample_documents/   synthetic docs to test cross-document questions
+│       ├── ingestion/    extração (PDF/DOCX/MD/TXT) + chunking
+│       ├── embeddings/   EmbeddingProvider + implementação Ollama
+│       ├── llm/          LLMProvider + implementação Ollama
+│       ├── rag/          pipeline de retrieval + chat fundamentado
+│       ├── models/       modelos ORM + schemas Pydantic
+│       └── services/     ingestão/gestão de documentos
+├── frontend/           SPA Vue 3 + TS (Painel, Documentos, Assistente, Explorador RAG, Configurações)
+├── sample_documents/   documentos sintéticos para testar perguntas cruzadas
 ├── evaluation/         dataset.json + evaluate.py
-├── n8n/                V2 automation (placeholder)
-├── fine_tuning/        V5 fine-tuning (placeholder)
+├── n8n/                automação V2 (placeholder)
+├── fine_tuning/        fine-tuning V5 (placeholder)
 └── docker-compose.yml
 ```
 
 ```mermaid
 flowchart LR
-    subgraph Ingestion
-        U[Upload] --> V[Validate + hash]
-        V --> X[Extract text]
-        X --> C[Chunk + metadata]
-        C --> E1[Embed]
+    subgraph Ingestao
+        U[Upload] --> V[Validar + hash]
+        V --> X[Extrair texto]
+        X --> C[Chunking + metadados]
+        C --> E1[Embeddings]
         E1 --> DB[(pgvector)]
     end
-    subgraph Query
-        Q[Question] --> E2[Embed query]
-        E2 --> R[Retrieve top-k]
+    subgraph Consulta
+        Q[Pergunta] --> E2[Embedding da query]
+        E2 --> R[Recuperar top-k]
         R --> DB
-        R --> T{Score >= threshold?}
-        T -- no --> I[INSUFFICIENT_CONTEXT]
-        T -- yes --> P[Grounded prompt]
+        R --> T{Score >= limiar?}
+        T -- nao --> I[INSUFFICIENT_CONTEXT]
+        T -- sim --> P[Prompt fundamentado]
         P --> L[LLM via Ollama]
-        L --> A[Answer + sources]
+        L --> A[Resposta + fontes]
     end
 ```
 
 ---
 
-## RAG pipeline
+## Executando localmente
 
-```
-document → extraction → normalization → chunking → embeddings
-        → pgvector → retrieval → context → LLM → answer → sources
-```
-
-Each stored chunk keeps the metadata needed for citation: `document_id`,
-`filename`, `file_type`, `chunk_index`, `section`, `page`, `content`, `embedding`
-and `created_at`.
-
-**Grounding.** The system prompt instructs the model to answer only from the
-retrieved context and to reply `INSUFFICIENT_CONTEXT` when it cannot. Before the
-LLM is even called, retrieved chunks are filtered by a configurable
-`SIMILARITY_THRESHOLD`; if none qualify, the app short-circuits and returns the
-"not enough information" response without asking the model to fill the gap.
-
----
-
-## Running locally
-
-### Prerequisites
+### Pré-requisitos
 
 - [Docker](https://www.docker.com/) + Docker Compose
-- [Ollama](https://ollama.com/) running on the host
-- Python 3.11+ and Node 20+ (only if you run backend/frontend outside Docker)
+- [Ollama](https://ollama.com/) rodando no host
+- Python 3.11+ e Node 20+ (apenas se rodar backend/frontend fora do Docker)
 
-### 1. Pull the models
+### 1. Baixe os modelos
 
 ```bash
 ollama pull llama3.2:3b
@@ -141,22 +194,22 @@ ollama pull nomic-embed-text
 cp .env.example .env
 ```
 
-The defaults work out of the box for a local setup.
+Os padrões funcionam de imediato em um ambiente local.
 
-### 3a. Everything in Docker
+### 3a. Tudo no Docker
 
 ```bash
 docker compose up --build
 ```
 
 - Frontend: http://localhost:5180
-- Backend API + docs: http://localhost:8000/docs
+- API + docs: http://localhost:8000/docs
 
-The backend reaches the host's Ollama via `host.docker.internal`.
+O backend acessa o Ollama do host via `host.docker.internal`.
 
-### 3b. Or run services directly (for development)
+### 3b. Ou rode os serviços diretamente (desenvolvimento)
 
-Start only Postgres in Docker:
+Suba apenas o Postgres no Docker:
 
 ```bash
 docker compose up -d db
@@ -180,86 +233,91 @@ npm install
 npm run dev   # http://localhost:5180
 ```
 
-### 4. Try it
+> Dica: se a porta 8000 já estiver em uso na sua máquina, rode o backend em outra
+> porta (ex.: `--port 8010`) e crie `frontend/.env.local` com
+> `VITE_API_BASE_URL=http://localhost:8010` (esse arquivo é ignorado pelo git).
 
-1. Open **Documents** and upload the files in `sample_documents/`.
-2. Open **RAG Explorer** and search — see the ranked chunks and scores.
-3. Open **Assistant** and ask _"What is the difference between RAG and fine-tuning?"_
-4. Ask something not in the docs and watch it refuse instead of guessing.
+### 4. Experimente
+
+1. Abra **Documentos** e envie os arquivos de `sample_documents/`.
+2. Abra **Explorador RAG** e busque — veja os trechos ranqueados e os scores.
+3. Abra **Assistente** e pergunte _"Qual é a diferença entre RAG e fine-tuning?"_
+4. Pergunte algo que não esteja nos documentos e veja o sistema recusar em vez de
+   adivinhar.
 
 ---
 
-## Configuration
+## Configuração
 
-All settings come from environment variables (see `.env.example`):
+Todas as configurações vêm de variáveis de ambiente (veja `.env.example`):
 
-| Variable               | Default            | Description                                   |
+| Variável               | Padrão             | Descrição                                     |
 | ---------------------- | ------------------ | --------------------------------------------- |
-| `DATABASE_URL`         | local Postgres     | SQLAlchemy connection string                  |
-| `LLM_PROVIDER`         | `ollama`           | LLM backend selector                          |
-| `OLLAMA_BASE_URL`      | `localhost:11434`  | Ollama endpoint                               |
-| `OLLAMA_MODEL`         | `llama3.2:3b`      | Chat model                                    |
-| `LLM_NUM_CTX`          | `4096`             | Context window (bounds memory on local GPUs)  |
-| `EMBEDDING_PROVIDER`   | `ollama`           | Embedding backend selector                    |
-| `EMBEDDING_MODEL`      | `nomic-embed-text` | Embedding model                               |
-| `EMBEDDING_DIM`        | `768`              | Embedding vector dimension                    |
-| `RETRIEVAL_TOP_K`      | `5`                | Default chunks retrieved                      |
-| `SIMILARITY_THRESHOLD` | `0.55`             | Min cosine similarity to trust a chunk        |
-| `MAX_UPLOAD_MB`        | `25`               | Max upload size                               |
-| `ALLOWED_EXTENSIONS`   | `pdf,docx,md,txt`  | Upload whitelist                              |
-| `CHUNK_SIZE` / `CHUNK_OVERLAP` | `900` / `150` | Word-based chunking window / overlap     |
+| `DATABASE_URL`         | Postgres local     | String de conexão do SQLAlchemy               |
+| `LLM_PROVIDER`         | `ollama`           | Seletor do backend de LLM                     |
+| `OLLAMA_BASE_URL`      | `localhost:11434`  | Endpoint do Ollama                            |
+| `OLLAMA_MODEL`         | `llama3.2:3b`      | Modelo de chat                                |
+| `LLM_NUM_CTX`          | `4096`             | Janela de contexto (limita memória local)     |
+| `EMBEDDING_PROVIDER`   | `ollama`           | Seletor do backend de embeddings              |
+| `EMBEDDING_MODEL`      | `nomic-embed-text` | Modelo de embeddings                          |
+| `EMBEDDING_DIM`        | `768`              | Dimensão do vetor de embedding                |
+| `RETRIEVAL_TOP_K`      | `5`                | Trechos recuperados por padrão                |
+| `SIMILARITY_THRESHOLD` | `0.55`             | Similaridade mínima para confiar num trecho   |
+| `MAX_UPLOAD_MB`        | `25`               | Tamanho máximo de upload                      |
+| `ALLOWED_EXTENSIONS`   | `pdf,docx,md,txt`  | Whitelist de upload                           |
+| `CHUNK_SIZE` / `CHUNK_OVERLAP` | `900` / `150` | Janela / sobreposição do chunking (palavras) |
 
 ---
 
 ## API
 
-| Method   | Endpoint                  | Description                                  |
+| Método   | Endpoint                  | Descrição                                    |
 | -------- | ------------------------- | -------------------------------------------- |
-| `POST`   | `/api/documents/upload`   | Upload & index a document (multipart `file`) |
-| `GET`    | `/api/documents`          | List indexed documents                       |
-| `GET`    | `/api/documents/{id}`     | Get one document                             |
-| `DELETE` | `/api/documents/{id}`     | Delete a document and its chunks             |
-| `POST`   | `/api/search`             | Semantic retrieval only (no LLM)             |
-| `POST`   | `/api/chat`               | Grounded RAG answer with sources             |
-| `GET`    | `/api/stats`              | Dashboard statistics                         |
+| `POST`   | `/api/documents/upload`   | Envia & indexa um documento (multipart `file`) |
+| `GET`    | `/api/documents`          | Lista os documentos indexados                |
+| `GET`    | `/api/documents/{id}`     | Retorna um documento                         |
+| `DELETE` | `/api/documents/{id}`     | Exclui um documento e seus trechos           |
+| `POST`   | `/api/search`             | Recuperação semântica (sem LLM)              |
+| `POST`   | `/api/chat`               | Resposta RAG fundamentada com fontes         |
+| `GET`    | `/api/stats`              | Estatísticas do painel                       |
 | `GET`    | `/api/health`             | Health check                                 |
 
-Interactive docs at `/docs`.
+Documentação interativa em `/docs`.
 
-**Search** — `{ "query": "...", "top_k": 5 }` → ranked chunks with score, document,
-section/page and content.
+**Search** — `{ "query": "...", "top_k": 5 }` → trechos ranqueados com score,
+documento, seção/página e conteúdo.
 
 **Chat** — `{ "question": "...", "top_k": 5 }` →
 `{ "answer": "...", "sources": [...], "status": "answered" | "insufficient_context" }`.
 
 ---
 
-## Evaluation
+## Avaliação
 
-With the backend running and the sample documents indexed:
+Com o backend no ar e os documentos de exemplo indexados:
 
 ```bash
 python evaluation/evaluate.py --api http://localhost:8000 --top-k 5
 ```
 
-It reports **Hit@K** (was the expected source retrieved), **expected-term
-coverage**, **insufficient-context accuracy** (correct refusals on unanswerable
-questions) and **average latency**. Edit `evaluation/dataset.json` to add cases.
+Relata **Hit@K** (a fonte esperada foi recuperada), **cobertura de termos esperados**,
+**precisão de contexto insuficiente** (recusas corretas em perguntas sem resposta) e
+**latência média**. Edite `evaluation/dataset.json` para adicionar casos.
 
 ---
 
-## Testing
+## Testes
 
 ```bash
 cd backend
 pytest
 ```
 
-Pure unit tests (extraction, chunking, provider error handling) run anywhere.
-Integration tests that need Postgres + Ollama skip automatically when the stack
-isn't available.
+Os testes unitários puros (extração, chunking, tratamento de erro dos provedores) rodam
+em qualquer lugar. Os testes de integração que precisam de Postgres + Ollama são pulados
+automaticamente quando a stack não está disponível.
 
-Frontend build / type-check:
+Build / checagem de tipos do frontend:
 
 ```bash
 cd frontend
@@ -270,17 +328,17 @@ npm run build
 
 ## Roadmap
 
-| Version | Focus                                             |
+| Versão  | Foco                                              |
 | ------- | ------------------------------------------------- |
-| **V1**  | RAG + Ollama + pgvector _(this release)_          |
-| V2      | Document automation with n8n                      |
-| V3      | RAG evaluation improvements / reranking           |
-| V4      | vLLM inference server                             |
-| V5      | Dataset curation + fine-tuning                    |
+| **V1**  | RAG + Ollama + pgvector _(esta versão)_           |
+| V2      | Automação de documentos com n8n                   |
+| V3      | Melhorias de avaliação de RAG / reranking         |
+| V4      | Servidor de inferência vLLM                       |
+| V5      | Curadoria de dataset + fine-tuning                |
 | V6      | Agents / tools                                    |
 
 ---
 
-## License
+## Licença
 
 [MIT](LICENSE)
