@@ -1,0 +1,1 @@
+{"root":["./src/api.ts","./src/main.ts","./src/router.ts","./src/vite-env.d.ts","./src/app.vue","./src/components/sourcecard.vue","./src/views/assistant.vue","./src/views/dashboard.vue","./src/views/documents.vue","./src/views/ragexplorer.vue","./src/views/settings.vue"],"version":"5.6.3"}
