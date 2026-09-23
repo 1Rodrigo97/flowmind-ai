@@ -149,7 +149,7 @@ The defaults work out of the box for a local setup.
 docker compose up --build
 ```
 
-- Frontend: http://localhost:5173
+- Frontend: http://localhost:5180
 - Backend API + docs: http://localhost:8000/docs
 
 The backend reaches the host's Ollama via `host.docker.internal`.
@@ -177,7 +177,7 @@ Frontend:
 ```bash
 cd frontend
 npm install
-npm run dev   # http://localhost:5173
+npm run dev   # http://localhost:5180
 ```
 
 ### 4. Try it

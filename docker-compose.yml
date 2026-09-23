@@ -34,7 +34,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "5173:5173"
+      - "5180:5180"
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
     depends_on:

@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     host: true,
-    port: 5173,
+    // 5173 is Vite's default; using 5180 avoids clashing with other local projects.
+    port: 5180,
   },
 })

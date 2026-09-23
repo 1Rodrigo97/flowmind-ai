@@ -45,3 +45,8 @@ evaluation/results/
 Thumbs.db
 .idea/
 .vscode/
+
+# Emitted TS build artifacts (should never be checked in)
+vite.config.js
+vite.config.d.ts
+*.tsbuildinfo
