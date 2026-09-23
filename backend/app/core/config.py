@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     chunk_size: int = 900
     chunk_overlap: int = 150
 
+    # Reranking (V2). Disabled by default so the V1 pipeline is unchanged.
+    reranker_enabled: bool = False
+    reranker_model: str = "lexical"
+    reranker_candidates: int = 15
+    reranker_top_k: int = 5
+
     @property
     def allowed_extensions_set(self) -> set[str]:
         return {e.strip().lower() for e in self.allowed_extensions.split(",") if e.strip()}
@@ -43,6 +49,24 @@ class Settings(BaseSettings):
     @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_mb * 1024 * 1024
+
+    def index_profile(
+        self,
+        embedding_model: str | None = None,
+        chunk_size: int | None = None,
+        chunk_overlap: int | None = None,
+        version: str = "v1",
+    ) -> str:
+        """Deterministic index-profile id. Chunks embedded/chunked differently must
+        never be mixed in retrieval, so each profile is tagged with this string."""
+        em = embedding_model or self.embedding_model
+        cs = chunk_size if chunk_size is not None else self.chunk_size
+        co = chunk_overlap if chunk_overlap is not None else self.chunk_overlap
+        return f"{em}-{cs}-{co}-{version}"
+
+    @property
+    def default_index_profile(self) -> str:
+        return self.index_profile()
 
 
 settings = Settings()

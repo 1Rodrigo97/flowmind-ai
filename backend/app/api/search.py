@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/search", tags=["search"])
 @router.post("", response_model=SearchResponse)
 def semantic_search(req: SearchRequest, db: Session = Depends(get_db)):
     try:
-        results = rag_search(db, req.query, req.top_k)
+        result = rag_search(db, req.query, req.top_k, req.reranker)
     except EmbeddingError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return SearchResponse(query=req.query, results=results)
+    return SearchResponse(**result)
