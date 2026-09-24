@@ -50,6 +50,24 @@ function fmtDate(iso: string): string {
       </div>
     </div>
 
+    <div class="grid grid-4" style="margin-top: 16px">
+      <div class="card">
+        <div class="stat">{{ stats.automated_today }}</div>
+        <div class="stat-label">Automatizados hoje</div>
+      </div>
+      <div class="card">
+        <div class="stat">{{ stats.tasks_extracted }}</div>
+        <div class="stat-label">Tarefas extraídas</div>
+      </div>
+      <div class="card">
+        <div class="stat">{{ stats.automation_failures }}</div>
+        <div class="stat-label">Falhas de automação</div>
+      </div>
+      <div class="card" style="display: flex; align-items: center; justify-content: center">
+        <RouterLink to="/automation" class="btn-ghost" style="text-align: center">Ver automações →</RouterLink>
+      </div>
+    </div>
+
     <div class="grid" style="grid-template-columns: 1fr 2fr; margin-top: 16px">
       <div class="card">
         <h3 style="margin-top: 0">Tipos de arquivo</h3>

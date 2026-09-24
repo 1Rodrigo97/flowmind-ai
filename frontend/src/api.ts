@@ -10,6 +10,52 @@ export interface DocumentOut {
   chunk_count: number
   status: string
   created_at: string
+  category?: string | null
+  tags?: string[] | null
+  has_insights?: boolean
+}
+
+export interface TaskItem {
+  text: string
+  due_date: string | null
+}
+
+export interface Insights {
+  document_id: number
+  summary: string
+  category: string
+  tags: string[]
+  tasks: TaskItem[]
+  dates: string[]
+  model: string
+  status: string
+  created_at: string
+}
+
+export interface AutomationRun {
+  id: number
+  run_uid: string
+  workflow: string
+  filename: string
+  document_id: number | null
+  file_hash: string | null
+  status: string
+  insights_status: string | null
+  attempts: number
+  error_message: string | null
+  duration_ms: number | null
+  started_at: string
+  finished_at: string | null
+}
+
+export interface AutomationStats {
+  processed: number
+  success: number
+  duplicate: number
+  failed: number
+  pending: number
+  avg_duration_ms: number
+  tasks_extracted: number
 }
 
 export interface UploadResult {
@@ -94,6 +140,9 @@ export interface StatsResponse {
   chunks: number
   file_types: Record<string, number>
   recent: DocumentOut[]
+  automated_today: number
+  tasks_extracted: number
+  automation_failures: number
 }
 
 async function handle<T>(resp: Response): Promise<T> {
@@ -163,6 +212,32 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ experiment_ids: ids }),
       }),
+    )
+  },
+
+  async getInsights(documentId: number): Promise<Insights | null> {
+    const resp = await fetch(`${BASE}/api/documents/${documentId}/insights`)
+    if (resp.status === 404) return null
+    return handle(resp)
+  },
+
+  async generateInsights(documentId: number): Promise<Insights> {
+    return handle(
+      await fetch(`${BASE}/api/documents/${documentId}/insights`, { method: 'POST' }),
+    )
+  },
+
+  async listRuns(): Promise<AutomationRun[]> {
+    return handle(await fetch(`${BASE}/api/automation/runs`))
+  },
+
+  async automationStats(): Promise<AutomationStats> {
+    return handle(await fetch(`${BASE}/api/automation/stats`))
+  },
+
+  async retryRun(runId: number): Promise<AutomationRun> {
+    return handle(
+      await fetch(`${BASE}/api/automation/runs/${runId}/retry`, { method: 'POST' }),
     )
   },
 

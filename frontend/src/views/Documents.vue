@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { api, type DocumentOut } from '../api'
+import InsightsPanel from '../components/InsightsPanel.vue'
 
 const docs = ref<DocumentOut[]>([])
+const openInsights = ref<number | null>(null)
+function toggleInsights(id: number) {
+  openInsights.value = openInsights.value === id ? null : id
+}
 const error = ref('')
 const notice = ref('')
 const uploading = ref(false)
@@ -105,21 +110,38 @@ function statusPt(s: string): string {
   <div class="card" style="margin-top: 20px; padding: 0">
     <table>
       <thead>
-        <tr><th>Nome</th><th>Tipo</th><th>Tamanho</th><th>Trechos</th><th>Status</th><th></th></tr>
+        <tr><th>Nome</th><th>Tipo</th><th>Categoria</th><th>Tags</th><th>Trechos</th><th>Status</th><th></th></tr>
       </thead>
       <tbody>
-        <tr v-for="d in docs" :key="d.id">
-          <td>{{ d.filename }}</td>
-          <td><span class="badge">{{ d.file_type }}</span></td>
-          <td class="muted">{{ fmtSize(d.size_bytes) }}</td>
-          <td>{{ d.chunk_count }}</td>
-          <td><span class="badge ok">{{ statusPt(d.status) }}</span></td>
-          <td style="text-align: right">
-            <button class="btn-danger" @click="remove(d.id)">Excluir</button>
-          </td>
-        </tr>
+        <template v-for="d in docs" :key="d.id">
+          <tr>
+            <td>{{ d.filename }}</td>
+            <td><span class="badge">{{ d.file_type }}</span></td>
+            <td>
+              <span v-if="d.category" class="badge">{{ d.category }}</span>
+              <span v-else class="muted">—</span>
+            </td>
+            <td>
+              <span v-for="t in (d.tags || []).slice(0, 3)" :key="t" class="badge" style="margin: 0 3px 3px 0">{{ t }}</span>
+              <span v-if="!d.tags || !d.tags.length" class="muted">—</span>
+            </td>
+            <td>{{ d.chunk_count }}</td>
+            <td><span class="badge ok">{{ statusPt(d.status) }}</span></td>
+            <td style="text-align: right; white-space: nowrap">
+              <button class="btn-ghost" style="padding: 5px 10px; font-size: 12px" @click="toggleInsights(d.id)">
+                {{ openInsights === d.id ? 'Ocultar' : 'Ver insights' }}
+              </button>
+              <button class="btn-danger" style="margin-left: 6px" @click="remove(d.id)">Excluir</button>
+            </td>
+          </tr>
+          <tr v-if="openInsights === d.id">
+            <td colspan="7" style="background: var(--surface-2)">
+              <InsightsPanel :document-id="d.id" :key="d.id" />
+            </td>
+          </tr>
+        </template>
         <tr v-if="!docs.length">
-          <td colspan="6" class="muted" style="padding: 20px">Nenhum documento indexado ainda.</td>
+          <td colspan="7" class="muted" style="padding: 20px">Nenhum documento indexado ainda.</td>
         </tr>
       </tbody>
     </table>
