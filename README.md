@@ -81,7 +81,7 @@ Medidas nesta versão, com os documentos de exemplo indexados:
 
 | Métrica | Valor |
 | --- | --- |
-| Testes do backend | **33/33** ✅ |
+| Testes do backend | **48/48** ✅ |
 | Hit@5 (fonte esperada recuperada) | **100%** |
 | Recusa correta em contexto insuficiente | **100%** |
 | Latência média por pergunta (chat) | **~3,6 s** |
@@ -189,6 +189,70 @@ Também há o harness de linha de comando em `evaluation/evaluate.py` (ver
 
 ---
 
+## Automação Inteligente
+
+Além do upload manual, o FlowMind processa arquivos **automaticamente**: você
+coloca um documento em `automation/inbox/` e não clica em mais nada. Um workflow do
+**n8n** dispara a API, que indexa o arquivo, gera insights com IA e move o arquivo
+para `processed/` (ou `failed/`), registrando cada execução.
+
+```mermaid
+flowchart TD
+    A[Arquivo em automation/inbox] --> B[n8n · Schedule Trigger]
+    B --> C[POST /api/automation/scan · Bearer token]
+    C --> D[FlowMind API]
+    D --> E[Ingestão · dedupe SHA-256]
+    E --> F[RAG · chunks + embeddings + pgvector]
+    E --> G[Document Insights · LLM grounded]
+    F --> H[(PostgreSQL)]
+    G --> H
+    D --> I[Move para processed/ ou failed/]
+    H --> J[Dashboard e aba Automações]
+```
+
+### A fronteira é a API
+
+O n8n **não acessa o PostgreSQL**. Ele só chama a API do FlowMind, que é quem move
+arquivos e escreve no banco (`n8n → FastAPI → services → PostgreSQL`). Os endpoints de
+automação são protegidos por um **service token** (`Authorization: Bearer ...`), que
+fica em uma variável do n8n — nunca no workflow exportado.
+
+### Document Insights (fundamentado)
+
+Depois de indexado, o documento é analisado pelo LLM local, que retorna **apenas com
+base no conteúdo**: `summary`, `category`, `tags`, `tasks` (`{text, due_date}`) e
+`dates`. Nada é inventado — se não há tarefas, `tasks = []`; se não há datas,
+`dates = []`. Os três documentos de exemplo em `automation/samples/` demonstram isso:
+a **reunião** e o **planejamento** geram tarefas e datas reais, enquanto o **artigo
+técnico** não recebe nenhuma tarefa inventada.
+
+### Idempotência, retries e fallback
+
+- **Idempotência** — dedupe pelo SHA-256 já usado na ingestão; reenviar o mesmo
+  conteúdo resulta em `status = DUPLICATE`, sem recriar o documento.
+- **Retries** — falha de ingestão mantém o arquivo na inbox e tenta de novo nos
+  próximos ticks até `AUTOMATION_MAX_ATTEMPTS`; só então vai para `failed/`.
+- **Fallback** — a ingestão e os insights são separados (`INGESTION_SUCCESS` ≠
+  `INSIGHTS_SUCCESS`): se o LLM falhar ao gerar insights, o documento **continua
+  indexado e disponível no Assistente**, e os insights ficam `FAILED` para retry
+  manual. Nada é perdido; arquivos só são movidos após um resultado conhecido.
+
+![Aba Automações](docs/screenshots/automacoes.png)
+
+### Rodando a automação
+
+Com a stack no ar (`docker compose up -d`, que inclui o n8n em http://localhost:5678):
+
+1. Importe os workflows de [`n8n/workflows/`](n8n/workflows/) no n8n.
+2. Ative **FlowMind · Processar Inbox** (Schedule) — ou dispare o **Manual**.
+3. Copie um arquivo de `automation/samples/` para `automation/inbox/`.
+4. Em até 2 minutos ele é indexado, analisado e movido para `processed/`. Acompanhe na
+   aba **Automações**.
+
+Detalhes e endpoints em [`n8n/README.md`](n8n/README.md).
+
+---
+
 ## Funcionalidades
 
 - **Ingestão de documentos** — arrastar & soltar PDF, DOCX, MD e TXT; extração,
@@ -203,6 +267,9 @@ Também há o harness de linha de comando em `evaluation/evaluate.py` (ver
   atrás de uma abstração `RerankerProvider`, com feature flag desligada por padrão.
 - **Perfis de índice** — cada chunk é marcado com o perfil (modelo + chunk size/overlap)
   para nunca misturar embeddings incompatíveis na mesma recuperação.
+- **Automação com n8n** — inbox automation orientada a eventos: detecta o arquivo,
+  indexa, gera insights (resumo, categoria, tags, tarefas, datas) e move para
+  processed/failed, com idempotência, retries e observabilidade.
 - **Não alucina** — quando nenhum trecho passa do limiar, o LLM nunca é solicitado a
   inventar; a aplicação retorna "informação insuficiente".
 - **Deduplicação** — uploads idênticos são detectados por hash de conteúdo e ignorados.
@@ -241,7 +308,7 @@ Ollama. O backend de embeddings é intercambiável atrás de `EmbeddingProvider`
 flowmind-ai/
 ├── backend/            App FastAPI
 │   └── app/
-│       ├── api/          rotas HTTP (documents, search, chat, stats, evaluation)
+│       ├── api/          rotas HTTP (documents, search, chat, stats, evaluation, automation)
 │       ├── core/         config, database, logging
 │       ├── ingestion/    extração (PDF/DOCX/MD/TXT) + chunking
 │       ├── embeddings/   EmbeddingProvider + implementação Ollama
@@ -249,11 +316,12 @@ flowmind-ai/
 │       ├── rag/          pipeline de retrieval + chat + rag/reranker/ (RerankerProvider)
 │       ├── evaluation/   métricas, perfis de índice e runner de experimentos (V2)
 │       ├── models/       modelos ORM + schemas Pydantic
-│       └── services/     ingestão/gestão de documentos
-├── frontend/           SPA Vue 3 + TS (Painel, Documentos, Assistente, Explorador RAG, Laboratório RAG, Configurações)
+│       └── services/     ingestão, insights e automação (inbox)
+├── frontend/           SPA Vue 3 + TS (Painel, Documentos, Assistente, Explorador RAG, Laboratório RAG, Automações, Configurações)
+├── automation/         inbox/ processed/ failed/ samples/ (pastas da automação)
+├── n8n/                docker + workflows JSON versionados
 ├── sample_documents/   documentos sintéticos para testar perguntas cruzadas
 ├── evaluation/         dataset.json + evaluate.py
-├── n8n/                automação V2 (placeholder)
 ├── fine_tuning/        fine-tuning V5 (placeholder)
 └── docker-compose.yml
 ```
@@ -375,6 +443,9 @@ Todas as configurações vêm de variáveis de ambiente (veja `.env.example`):
 | `RERANKER_MODEL`       | `lexical`          | Reranker (BM25 lexical local)                 |
 | `RERANKER_CANDIDATES`  | `15`               | Candidatos N recuperados antes do reranking   |
 | `RERANKER_TOP_K`       | `5`                | K final após reranking                        |
+| `FLOWMIND_AUTOMATION_TOKEN` | _(vazio)_     | Service token da automação (vazio = auth off) |
+| `AUTOMATION_INBOX_DIR` | `automation/inbox` | Pasta monitorada (arquivos novos)            |
+| `AUTOMATION_MAX_ATTEMPTS` | `3`             | Tentativas antes de mover para `failed/`      |
 | `MAX_UPLOAD_MB`        | `25`               | Tamanho máximo de upload                      |
 | `ALLOWED_EXTENSIONS`   | `pdf,docx,md,txt`  | Whitelist de upload                           |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `900` / `150` | Janela / sobreposição do chunking (palavras) |
@@ -393,6 +464,12 @@ Todas as configurações vêm de variáveis de ambiente (veja `.env.example`):
 | `POST`   | `/api/chat`               | Resposta RAG fundamentada com fontes         |
 | `GET`    | `/api/stats`              | Estatísticas do painel                       |
 | `GET`    | `/api/health`             | Health check                                 |
+| `POST`   | `/api/documents/{id}/insights` | Gera (ou retorna) os insights do documento |
+| `GET`    | `/api/documents/{id}/insights` | Insights persistidos                    |
+| `POST`   | `/api/automation/scan`    | Varre a inbox e processa (token) — chamado pelo n8n |
+| `GET`    | `/api/automation/runs`    | Lista as execuções de automação              |
+| `GET`    | `/api/automation/stats`   | Métricas da automação                        |
+| `POST`   | `/api/automation/runs/{id}/retry` | Retry manual idempotente (token)     |
 
 Documentação interativa em `/docs`.
 
@@ -444,9 +521,9 @@ npm run build
 | ------- | ------------------------------------------------- | ------ |
 | **V1**  | RAG + Ollama + pgvector                           | ✅ entregue |
 | **Lab** | Laboratório de Avaliação RAG + reranking          | ✅ entregue |
-| V2      | Automação de documentos com n8n                   | próximo pilar |
+| **Automação** | Inbox automation com n8n + Document Insights | ✅ entregue |
 | V3      | Melhorias de avaliação / reranking (cross-encoder)| planejado |
-| V4      | Servidor de inferência vLLM                       | planejado |
+| V4      | Servidor de inferência vLLM                       | próximo pilar |
 | V5      | Curadoria de dataset + fine-tuning                | planejado |
 | V6      | Agents / tools                                    | planejado |
 
