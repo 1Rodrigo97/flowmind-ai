@@ -1,19 +1,52 @@
-# n8n Automation (planned — V2)
+# n8n — Automação Inteligente
 
-This directory is a placeholder for the **V2** document-automation layer. It is
-**not implemented in V1**.
+Esta pasta contém a automação orientada a eventos do FlowMind AI, construída com
+[n8n](https://n8n.io/). O n8n roda em contêiner (ver `docker-compose.yml`), com
+volume próprio, sem depender de instalação global.
 
-## Intended scope
+## Arquitetura
 
-n8n will orchestrate automations around the FlowMind AI backend, for example:
+O n8n **não acessa o PostgreSQL diretamente**. Ele apenas chama a API do FlowMind,
+que é a fronteira do sistema e é quem move arquivos e escreve no banco:
 
-- Watch a folder / inbox and auto-upload new documents to `POST /api/documents/upload`.
-- Schedule periodic re-indexing or health checks.
-- Route grounded answers from `POST /api/chat` to external channels.
+```
+n8n (schedule)  ->  POST /api/automation/scan  ->  FastAPI  ->  services  ->  PostgreSQL
+```
 
-## Planned integration
+O backend varre a `automation/inbox`, ingere cada arquivo (dedupe por SHA-256), gera
+os insights e move o arquivo para `processed/` ou `failed/`, registrando um
+`automation_run`.
 
-Workflows will call the existing REST API — no backend changes required. Exported
-workflow JSON files will live in this directory once V2 begins.
+## Workflows
 
-See the [Roadmap](../README.md#roadmap) for the full phase plan.
+Exportados como JSON versionado em `workflows/`:
+
+- **`flowmind-processar-inbox.json`** — Schedule Trigger (a cada 2 min) → HTTP Request
+  `POST /api/automation/scan`. É a automação agendada principal.
+- **`flowmind-processar-manual.json`** — Manual Trigger → mesma chamada com
+  `?workflow=manual`, para demonstração sob demanda.
+
+Ambos usam `retryOnFail` (3 tentativas) no nó HTTP.
+
+## Autenticação
+
+O token de serviço **não** fica no workflow exportado. Os nós leem variáveis de
+ambiente do n8n:
+
+- `FLOWMIND_API_URL` — base da API (no compose: `http://backend:8000`).
+- `FLOWMIND_AUTOMATION_TOKEN` — token enviado como `Authorization: Bearer ...`.
+
+Defina o token no `.env` da raiz (`FLOWMIND_AUTOMATION_TOKEN=...`); o compose o injeta
+no backend e você o adiciona ao n8n (Settings → Variables, ou via env). Se o token
+ficar vazio, a autenticação da automação fica desligada (modo dev local).
+
+## Como usar
+
+1. Suba a stack: `docker compose up -d` (inclui db, backend, frontend e n8n).
+2. Abra o n8n em http://localhost:5678 e importe os arquivos de `workflows/`.
+3. Ative o workflow **Processar Inbox** (ou dispare o **Manual**).
+4. Copie um arquivo de `automation/samples/` para `automation/inbox/`.
+5. Não clique em mais nada: em até 2 minutos o arquivo é indexado, analisado e movido
+   para `automation/processed/`. Veja o resultado na aba **Automações** da interface.
+
+Exemplo de resposta do `scan` em [`exemplos/scan-response.json`](exemplos/scan-response.json).

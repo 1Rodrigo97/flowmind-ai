@@ -20,6 +20,17 @@ env/
 uploads/
 backend/uploads/
 
+# Automation folders: keep the structure, ignore real files dropped by the user.
+automation/inbox/*
+automation/processed/*
+automation/failed/*
+!automation/inbox/.gitkeep
+!automation/processed/.gitkeep
+!automation/failed/.gitkeep
+
+# n8n local data volume
+n8n/data/
+
 # Database dumps / data
 *.sql
 *.dump

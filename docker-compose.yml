@@ -23,8 +23,15 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
       EMBEDDING_DIM: ${EMBEDDING_DIM:-768}
+      AUTOMATION_TOKEN: ${FLOWMIND_AUTOMATION_TOKEN:-}
+      AUTOMATION_INBOX_DIR: /data/automation/inbox
+      AUTOMATION_PROCESSED_DIR: /data/automation/processed
+      AUTOMATION_FAILED_DIR: /data/automation/failed
     ports:
       - "8000:8000"
+    volumes:
+      # The API owns file movement, so the automation folders are mounted here.
+      - ./automation:/data/automation
     depends_on:
       db:
         condition: service_healthy
@@ -40,5 +47,23 @@ services:
     depends_on:
       - backend
 
+  n8n:
+    image: n8nio/n8n:1.70.0
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_PORT: 5678
+      N8N_HOST: localhost
+      N8N_SECURE_COOKIE: "false"
+      N8N_RUNNERS_ENABLED: "true"
+      GENERIC_TIMEZONE: ${TZ:-America/Sao_Paulo}
+      # Base URL n8n uses to reach the FlowMind API (inside the compose network).
+      FLOWMIND_API_URL: http://backend:8000
+    volumes:
+      - n8ndata:/home/node/.n8n
+    depends_on:
+      - backend
+
 volumes:
   pgdata:
+  n8ndata:

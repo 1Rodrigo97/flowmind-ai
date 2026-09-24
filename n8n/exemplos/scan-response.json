@@ -1,0 +1,50 @@
+{
+  "processed": 3,
+  "runs": [
+    {
+      "id": 1,
+      "run_uid": "a1b2c3d4e5f6",
+      "workflow": "inbox",
+      "filename": "reuniao_projeto.md",
+      "document_id": 4,
+      "file_hash": "…sha256…",
+      "status": "SUCCESS",
+      "insights_status": "SUCCESS",
+      "attempts": 1,
+      "error_message": null,
+      "duration_ms": 3242.69,
+      "started_at": "2026-09-24T12:00:00Z",
+      "finished_at": "2026-09-24T12:00:03Z"
+    },
+    {
+      "id": 2,
+      "run_uid": "b2c3d4e5f6a1",
+      "workflow": "inbox",
+      "filename": "artigo_vector_db.md",
+      "document_id": 2,
+      "file_hash": "…sha256…",
+      "status": "SUCCESS",
+      "insights_status": "SUCCESS",
+      "attempts": 1,
+      "error_message": null,
+      "duration_ms": 7103.47,
+      "started_at": "2026-09-24T12:00:03Z",
+      "finished_at": "2026-09-24T12:00:10Z"
+    },
+    {
+      "id": 3,
+      "run_uid": "c3d4e5f6a1b2",
+      "workflow": "inbox",
+      "filename": "reuniao_projeto.md",
+      "document_id": 4,
+      "file_hash": "…sha256…",
+      "status": "DUPLICATE",
+      "insights_status": null,
+      "attempts": 1,
+      "error_message": null,
+      "duration_ms": 41.2,
+      "started_at": "2026-09-24T12:02:00Z",
+      "finished_at": "2026-09-24T12:02:00Z"
+    }
+  ]
+}

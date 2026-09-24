@@ -1,0 +1,59 @@
+{
+  "name": "FlowMind · Processar Documento Manual",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "7c2b1f20-0001-4b00-9100-000000000001",
+      "name": "Disparo Manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.FLOWMIND_API_URL}}/api/automation/scan?workflow=manual",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.FLOWMIND_AUTOMATION_TOKEN}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7c2b1f20-0002-4b00-9100-000000000002",
+      "name": "FlowMind · Processar Inbox (manual)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Disparo Manual": {
+      "main": [
+        [
+          {
+            "node": "FlowMind · Processar Inbox (manual)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "flowmind"
+    }
+  ]
+}
