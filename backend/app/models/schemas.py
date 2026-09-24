@@ -14,9 +14,67 @@ class DocumentOut(BaseModel):
     chunk_count: int
     status: str
     created_at: datetime
+    # Populated from Document Insights when available (automation pillar).
+    category: str | None = None
+    tags: list[str] | None = None
+    has_insights: bool = False
 
     class Config:
         from_attributes = True
+
+
+class TaskItem(BaseModel):
+    text: str
+    due_date: str | None = None
+
+
+class InsightsOut(BaseModel):
+    document_id: int
+    summary: str
+    category: str
+    tags: list[str]
+    tasks: list[TaskItem]
+    dates: list[str]
+    model: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AutomationRunOut(BaseModel):
+    id: int
+    run_uid: str
+    workflow: str
+    filename: str
+    document_id: int | None = None
+    file_hash: str | None = None
+    status: str
+    insights_status: str | None = None
+    attempts: int
+    error_message: str | None = None
+    duration_ms: float | None = None
+    started_at: datetime
+    finished_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class AutomationStats(BaseModel):
+    processed: int
+    success: int
+    duplicate: int
+    failed: int
+    pending: int
+    avg_duration_ms: float
+    tasks_extracted: int
+
+
+class ScanResponse(BaseModel):
+    processed: int
+    runs: list[AutomationRunOut]
 
 
 class UploadResult(BaseModel):
@@ -69,6 +127,10 @@ class StatsResponse(BaseModel):
     chunks: int
     file_types: dict[str, int]
     recent: list[DocumentOut]
+    # Automation indicators (kept small so the dashboard stays uncluttered).
+    automated_today: int = 0
+    tasks_extracted: int = 0
+    automation_failures: int = 0
 
 
 # ---- Evaluation lab (V2) ----

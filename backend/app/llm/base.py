@@ -17,5 +17,8 @@ class LLMProvider(ABC):
     model: str
 
     @abstractmethod
-    def generate(self, system: str, prompt: str) -> str:
-        """Generate a completion given a system instruction and a user prompt."""
+    def generate(self, system: str, prompt: str, json_mode: bool = False) -> str:
+        """Generate a completion given a system instruction and a user prompt.
+
+        When ``json_mode`` is set, the provider is asked to return strict JSON.
+        """

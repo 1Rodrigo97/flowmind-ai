@@ -15,17 +15,20 @@ class OllamaProvider(LLMProvider):
         self._timeout = timeout
         self._num_ctx = num_ctx
 
-    def generate(self, system: str, prompt: str) -> str:
+    def generate(self, system: str, prompt: str, json_mode: bool = False) -> str:
+        payload = {
+            "model": self.model,
+            "system": system,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"temperature": 0.1, "num_ctx": self._num_ctx},
+        }
+        if json_mode:
+            payload["format"] = "json"
         try:
             resp = httpx.post(
                 f"{self.base_url}/api/generate",
-                json={
-                    "model": self.model,
-                    "system": system,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {"temperature": 0.1, "num_ctx": self._num_ctx},
-                },
+                json=payload,
                 timeout=self._timeout,
             )
             resp.raise_for_status()
