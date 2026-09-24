@@ -1,7 +1,13 @@
 """Application configuration loaded from environment variables."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Repo root: backend/app/core/config.py -> parents[3].
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_AUTOMATION = _REPO_ROOT / "automation"
 
 
 class Settings(BaseSettings):
@@ -41,6 +47,14 @@ class Settings(BaseSettings):
     reranker_model: str = "lexical"
     reranker_candidates: int = 15
     reranker_top_k: int = 5
+
+    # Automation (n8n pillar). The API is the boundary: n8n calls FastAPI, which
+    # owns file movement and the database.
+    automation_token: str = ""  # FLOWMIND_AUTOMATION_TOKEN; empty disables auth (dev)
+    automation_inbox_dir: str = str(_AUTOMATION / "inbox")
+    automation_processed_dir: str = str(_AUTOMATION / "processed")
+    automation_failed_dir: str = str(_AUTOMATION / "failed")
+    automation_max_attempts: int = 3
 
     @property
     def allowed_extensions_set(self) -> set[str]:

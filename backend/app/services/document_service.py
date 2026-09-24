@@ -134,9 +134,38 @@ def stats(db: Session) -> dict:
     recent = list(
         db.scalars(select(Document).order_by(Document.created_at.desc()).limit(5))
     )
+
+    # Automation indicators (imported lazily to avoid a hard dependency at import time).
+    from datetime import datetime, timezone
+
+    from app.models import AutomationRun, DocumentInsights
+
+    start_of_day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    automated_today = (
+        db.scalar(
+            select(func.count(AutomationRun.id)).where(
+                AutomationRun.started_at >= start_of_day,
+                AutomationRun.status.in_(["SUCCESS", "DUPLICATE"]),
+            )
+        )
+        or 0
+    )
+    automation_failures = (
+        db.scalar(
+            select(func.count(AutomationRun.id)).where(AutomationRun.status == "FAILED")
+        )
+        or 0
+    )
+    tasks_extracted = sum(
+        len(r.tasks or []) for r in db.scalars(select(DocumentInsights))
+    )
+
     return {
         "documents": total_docs,
         "chunks": total_chunks,
         "file_types": file_types,
         "recent": recent,
+        "automated_today": automated_today,
+        "tasks_extracted": tasks_extracted,
+        "automation_failures": automation_failures,
     }
