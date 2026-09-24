@@ -57,8 +57,12 @@ services:
       N8N_SECURE_COOKIE: "false"
       N8N_RUNNERS_ENABLED: "true"
       GENERIC_TIMEZONE: ${TZ:-America/Sao_Paulo}
-      # Base URL n8n uses to reach the FlowMind API (inside the compose network).
-      FLOWMIND_API_URL: http://backend:8000
+      # Base URL n8n uses to reach the FlowMind API. Defaults to the compose backend;
+      # override via .env (e.g. http://host.docker.internal:8010) when the API runs on the host.
+      FLOWMIND_API_URL: ${FLOWMIND_API_URL:-http://backend:8000}
+      # Service token the workflows read via {{$env.FLOWMIND_AUTOMATION_TOKEN}}.
+      # Value comes from the root .env (gitignored); never hardcoded here or in the workflow.
+      FLOWMIND_AUTOMATION_TOKEN: ${FLOWMIND_AUTOMATION_TOKEN:-}
     volumes:
       - n8ndata:/home/node/.n8n
     depends_on:
